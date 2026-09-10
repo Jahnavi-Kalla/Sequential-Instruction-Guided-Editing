@@ -363,14 +363,6 @@ def hard_composite(frame_img, edit_toned_arr, keep):
     return Image.fromarray(np.clip(out, 0, 255).astype(np.uint8))
 
 #  ROI ZOOM  (scale + object continuity)
-def fit_res(size, long_target=EDIT_LONG, mult=16, max_up=MAX_UP):
-    w, h = size
-    up = min(long_target / float(max(w, h)), max_up)
-    nw = max(mult, int(round(w * up / mult)) * mult)
-    nh = max(mult, int(round(h * up / mult)) * mult)
-    return (nw, nh)
-
-
 def roi_from_bbox(bbox, W, H, zoom=ROI_ZOOM, minf=MIN_ROI_FRAC):
     x0, y0, x1, y1 = bbox
     cx, cy = (x0 + x1) / 2.0, (y0 + y1) / 2.0
@@ -654,22 +646,6 @@ def free_pipe(verbose=True):
 def load_pipe():
     return get_pipe()
 
-
-#  NULL-PASS MANIFOLD PROJECTION
-def project_to_manifold(pipe, real):
-    g = torch.Generator(device=DEVICE).manual_seed(SEED)
-    prompt = ("Using the first image as the scene and the second as the reference, "
-              "keep the room, the walls, the floor, the lighting, all furniture and "
-              "equipment, any people already present, and the background exactly as "
-              "they appear: " + NULL_INSTRUCTION)
-    with torch.inference_mode():
-        out = pipe(image=[real, real], prompt=prompt, negative_prompt=NEG,
-                   true_cfg_scale=NULL_CFG, num_inference_steps=NULL_STEPS,
-                   guidance_scale=1.0, num_images_per_prompt=1, generator=g).images[0]
-    if out.size != real.size:
-        out = out.resize(real.size, Image.LANCZOS)
-    return out
-
 #  DISPLAY QUALITY UPGRADE
 ESRGAN_URL = ("https://github.com/xinntao/Real-ESRGAN/releases/download/"
               "v0.1.0/RealESRGAN_x4plus.pth")
@@ -755,12 +731,6 @@ def edit_once(pipe, frame, clean, prompt):
     if out.size != frame.size:
         out = out.resize(frame.size, Image.LANCZOS)
     return out
-
-
-def _union(a, b):
-    if a is None: return b
-    if b is None: return a
-    return (min(a[0], b[0]), min(a[1], b[1]), max(a[2], b[2]), max(a[3], b[3]))
 
 
 def contact_sheet(frames, labels, cell=460):
